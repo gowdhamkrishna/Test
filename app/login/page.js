@@ -7,7 +7,6 @@ import Loader from '../components/Loader';
 import { FiCheckCircle, FiAlertCircle, FiUser, FiCalendar, FiArrowDown } from 'react-icons/fi';
 import Image from 'next/image';
 import Head from 'next/head';
-// This is a Login
 
 
 export default function LoginPage() {
