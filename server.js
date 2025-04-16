@@ -104,7 +104,8 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev',
     'http://localhost:3000',
-    'http://localhost:5000'
+    'http://localhost:5000',
+    'http://localhost:5001'
   ];
   
   const origin = req.headers.origin;
@@ -236,7 +237,7 @@ app.post('/recreate-user', async (req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: ["*", "http://localhost:3000", "capacitor://localhost", "ionic://localhost", "null"],
+    origin: ["*", "http://localhost:3000", "capacitor://localhost", "ionic://localhost", "null", "https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
@@ -1794,7 +1795,8 @@ io.engine.opts.cors = {
   origin: [
     'https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev',
     'http://localhost:3000', 
-    'http://localhost:5000'
+    'http://localhost:5000',
+    'http://localhost:5001'
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true

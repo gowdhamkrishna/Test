@@ -5,6 +5,7 @@ echo "Starting Chatup server in Google Cloud environment..."
 
 # Set environment variables
 export NODE_ENV=production
+export PORT=5001
 
 # Make sure we have the latest dependencies
 echo "Installing dependencies..."
