@@ -431,6 +431,45 @@ export default function LoginPage() {
       }
     };
 
+    // Add a button component for diagnosing connection issues
+    const DiagnosticButton = () => {
+      const handleDiagnostic = async () => {
+        // Import socket client and diagnostic functions
+        const { checkServerHealth, setTransportType, getServerUrl } = await import('../../sockClient');
+        
+        toast.info('Running connection diagnostics...');
+        
+        // Check server health
+        const healthResult = await checkServerHealth();
+        if (healthResult.success) {
+          toast.success(healthResult.message);
+        } else {
+          toast.error(`Server health check failed: ${healthResult.error}`);
+          
+          // Try switching transport type to polling
+          toast.info('Trying to switch transport to polling mode...');
+          const transportResult = setTransportType('polling');
+          
+          if (transportResult) {
+            toast.info('Transport set to polling. Retrying connection...');
+          }
+        }
+        
+        // Display connection info
+        toast.info(`Connecting to: ${getServerUrl()}`);
+      };
+      
+      return (
+        <button
+          onClick={handleDiagnostic}
+          className="mt-2 text-sm text-blue-600 hover:underline"
+          type="button"
+        >
+          Diagnose Connection Issues
+        </button>
+      );
+    };
+
   return (  
     <>
       {/* Add meta tags for mobile viewport */}
@@ -692,17 +731,22 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              className={`w-full py-3.5 md:py-4 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] font-semibold text-white shadow-lg ${
-                usernameError || connectionStatus !== 'connected' || !termsAccepted
-                  ? 'bg-gray-300 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:ring-blue-500 shadow-blue-500/20'
-              }`}
-              disabled={!!usernameError || connectionStatus !== 'connected' || !termsAccepted}
-            >
-              Get Started
-            </button>
+            <div className="flex flex-col items-center">
+              <button
+                type="submit"
+                className={`w-full py-3.5 md:py-4 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] font-semibold text-white shadow-lg ${
+                  usernameError || connectionStatus !== 'connected' || !termsAccepted
+                    ? 'bg-gray-300 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:ring-blue-500 shadow-blue-500/20'
+                }`}
+                disabled={!!usernameError || connectionStatus !== 'connected' || !termsAccepted}
+              >
+                Get Started
+              </button>
+              
+              {/* Connection diagnostic button */}
+              <DiagnosticButton />
+            </div>
             
             {connectionStatus === 'error' && (
               <div className="text-xs text-center mt-2 text-red-500">

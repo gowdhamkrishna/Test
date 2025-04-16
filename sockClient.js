@@ -22,8 +22,19 @@ const getServerUrl = () => {
   
   // Check if we're in Google Cloud Shell environment
   if (window.location.hostname.includes('cloudshell.dev')) {
-    // Use HTTPS for cloud shell connections
-    return window.location.origin.replace('3000', '5000');
+    // Get the exact hostname pattern for Cloud Shell
+    const hostname = window.location.hostname;
+    // Extract the port and project ID parts
+    const parts = hostname.split('-');
+    if (parts.length >= 2) {
+      // Replace port 3000 with 5000 for backend
+      const portNumber = parts[0] === '3000' ? '5000' : parts[0];
+      // Return the full URL structure with the new port
+      return `https://${portNumber}-${parts.slice(1).join('-')}`;
+    }
+    
+    // Fallback to simpler replacement if pattern doesn't match
+    return window.location.origin.replace(/^https?:\/\/\d+/, 'https://5000');
   }
   
   // Otherwise use the current hostname with port 5000
@@ -77,15 +88,17 @@ const updateActivityTimestamp = () => {
 const createSocket = () => {
   const serverUrl = getServerUrl();
   
+  console.log(`Connecting to server at: ${serverUrl}`);
+  
   const socket = io(serverUrl, {
     reconnection: true,
     reconnectionAttempts: Infinity, // Try to reconnect indefinitely
     reconnectionDelay: 1000,
     reconnectionDelayMax: isMobileDevice() ? 10000 : 5000, // Longer max delay on mobile
     timeout: isMobileDevice() ? 30000 : 20000, // Longer timeout on mobile
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'], // Try polling first, then websocket
     autoConnect: true,
-    forceNew: false, // Reuse existing connection
+    forceNew: true, // Create a new connection to avoid stale connections
     // Include username in handshake query if available
     query: {
       userName: getCurrentUser(),
@@ -93,6 +106,19 @@ const createSocket = () => {
     },
     // Enable CORS with credentials
     withCredentials: true
+  });
+  
+  // Add additional debugging for connection process
+  socket.io.on("error", (error) => {
+    console.error("Socket.io transport error:", error);
+  });
+  
+  socket.io.on("reconnect_attempt", (attempt) => {
+    console.log(`Socket reconnect attempt #${attempt}`);
+    // On later reconnect attempts, try different transport options
+    if (attempt > 2) {
+      socket.io.opts.transports = ['polling']; // Force polling on later reconnect attempts
+    }
   });
   
   return socket;
@@ -422,6 +448,82 @@ export const updateSocketUser = (userName) => {
   }
 };
 
-// Export the socket instance, update function, and force reconnect
-export { forceReconnect, updateActivityTimestamp };
+// Add a health check function to diagnose connection issues
+export const checkServerHealth = async () => {
+  try {
+    const serverUrl = getServerUrl();
+    const healthUrl = `${serverUrl}/health`;
+    
+    console.log(`Testing server health at: ${healthUrl}`);
+    
+    // Try to fetch the health endpoint with a timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(healthUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal,
+      mode: 'cors',
+      cache: 'no-cache',
+      credentials: 'same-origin'
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`Server health check failed with status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Server health check result:', data);
+    
+    return {
+      success: true,
+      data,
+      message: `Server is healthy. Uptime: ${Math.floor(data.uptime / 60)} minutes`
+    };
+  } catch (error) {
+    console.error('Server health check error:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Server health check failed: ${error.message}`
+    };
+  }
+};
+
+// Expose a function to force transport type
+export const setTransportType = (transportType) => {
+  if (!socket || !socket.io) return false;
+  
+  // Valid transport types
+  if (['polling', 'websocket'].includes(transportType)) {
+    console.log(`Manually setting transport to: ${transportType}`);
+    socket.io.opts.transports = [transportType];
+    
+    // Reconnect to apply the change
+    if (socket.connected) {
+      socket.disconnect().connect();
+    } else {
+      socket.connect();
+    }
+    return true;
+  }
+  
+  return false;
+};
+
+// Export additional functions
+export { 
+  forceReconnect, 
+  updateActivityTimestamp,
+  checkServerHealth,
+  setTransportType,
+  getServerUrl
+};
+
 export default socket;

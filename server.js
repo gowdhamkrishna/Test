@@ -105,11 +105,14 @@ app.use((req, res, next) => {
     'https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev',
     'http://localhost:3000',
     'http://localhost:5000',
-    'http://localhost:5001'
+    'https://5000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev'
   ];
   
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (origin && origin.includes('cloudshell.dev')) {
+    // Allow any Cloud Shell domain
     res.header('Access-Control-Allow-Origin', origin);
   }
   
@@ -237,7 +240,9 @@ app.post('/recreate-user', async (req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: ["*", "http://localhost:3000", "capacitor://localhost", "ionic://localhost", "null", "https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev"],
+    origin: ["*", "http://localhost:3000", "capacitor://localhost", "ionic://localhost", "null",
+             "https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev",
+             "https://5000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
@@ -245,12 +250,24 @@ const io = new Server(server, {
   // Socket.IO performance optimizations
   pingTimeout: 60000, // Increased to 60 seconds for mobile
   pingInterval: 25000, // Increased to 25 seconds for mobile
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'], // Try polling first for better compatibility
   // Prefer websocket but fall back to polling for mobile
   upgradeTimeout: 10000, // 10 seconds upgrade timeout for slower mobile connections
   // Memory and CPU optimizations
   maxHttpBufferSize: 5e6, // 5MB for image transfers
   connectTimeout: 45000, // 45 second connection timeout for mobile
+  allowEIO3: true, // Allow backward compatibility
+  cookie: {
+    name: "socket-io",
+    httpOnly: false,
+    secure: true,
+    sameSite: "lax"
+  }
+});
+
+// Add a connection established listener with debug info
+io.engine.on("connection", (rawSocket) => {
+  console.log(`New transport connection established: ${rawSocket.transport.name}`);
 });
 
 const activeUsers = new Map();
@@ -1795,8 +1812,7 @@ io.engine.opts.cors = {
   origin: [
     'https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev',
     'http://localhost:3000', 
-    'http://localhost:5000',
-    'http://localhost:5001'
+    'http://localhost:5000'
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
