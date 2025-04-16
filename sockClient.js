@@ -105,7 +105,8 @@ const createSocket = () => {
   
   // Check if we're in Cloud Shell proxy environment
   const isCloudShellProxy = typeof window !== 'undefined' && 
-                           window.location.pathname.includes('/devshell/proxy');
+                           (window.location.pathname.includes('/devshell/proxy') || 
+                            window.location.hostname.includes('cloudshell.dev'));
   
   const socket = io(serverUrl, {
     reconnection: true,
@@ -113,7 +114,7 @@ const createSocket = () => {
     reconnectionDelay: 1000,
     reconnectionDelayMax: isMobileDevice() ? 10000 : 5000, // Longer max delay on mobile
     timeout: isMobileDevice() ? 30000 : 20000, // Longer timeout on mobile
-    transports: isCloudShellProxy ? ['polling'] : ['polling', 'websocket'], // Force polling in Cloud Shell proxy
+    transports: ['polling'], // Force polling only - WebSockets failing with 503 in Cloud Shell
     autoConnect: true,
     forceNew: true, // Create a new connection to avoid stale connections
     // Include username in handshake query if available

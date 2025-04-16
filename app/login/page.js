@@ -439,36 +439,46 @@ export default function LoginPage() {
         
         toast.info('Running connection diagnostics...');
         
+        // Check socket connection status
+        toast.info(`Socket connected: ${socket.connected ? 'Yes' : 'No'}`);
+        if (socket.connected) {
+          toast.success('Socket connection is established!');
+        } else {
+          toast.error('Socket is not connected. Trying to reconnect...');
+          socket.connect();
+        }
+        
         // Get server URL for displaying to user
         const serverUrl = getServerUrl();
         toast.info(`Current server URL: ${serverUrl}`);
         
-        // Check if we're in Cloud Shell proxy
-        const isCloudShellProxy = window.location.pathname.includes('/devshell/proxy');
-        if (isCloudShellProxy) {
-          toast.info('Detected Cloud Shell Proxy environment - using polling transport');
-          setTransportType('polling');
-        }
+        // Force polling transport
+        toast.info('Forcing polling transport mode...');
+        setTransportType('polling');
         
-        // Check server health
-        const healthResult = await checkServerHealth();
-        if (healthResult.success) {
-          toast.success(healthResult.message);
-        } else {
-          toast.error(`Server health check failed: ${healthResult.error}`);
+        // Check server health using fetch API
+        try {
+          const healthUrl = `${serverUrl}/health`;
+          toast.info(`Testing server health at: ${healthUrl}`);
           
-          // Try switching transport type to polling
-          toast.info('Trying to switch transport to polling mode...');
-          const transportResult = setTransportType('polling');
+          const response = await fetch(healthUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            timeout: 5000
+          });
           
-          if (transportResult) {
-            toast.info('Transport set to polling. Retrying connection...');
+          if (response.ok) {
+            const data = await response.json();
+            toast.success(`Server is healthy! Uptime: ${Math.floor(data.uptime / 60)} minutes`);
             
-            // Try a direct health check to the proxy test endpoint
+            // Try the proxy test endpoint as well
+            const proxyTestUrl = `${serverUrl}/proxy-test`;
+            toast.info(`Testing proxy connection to: ${proxyTestUrl}`);
+            
             try {
-              const proxyTestUrl = `${serverUrl}/proxy-test`;
-              toast.info(`Testing proxy connection to: ${proxyTestUrl}`);
-              
               const proxyResponse = await fetch(proxyTestUrl, { 
                 method: 'GET',
                 headers: { 'Accept': 'application/json' },
@@ -477,17 +487,28 @@ export default function LoginPage() {
               });
               
               if (proxyResponse.ok) {
-                const data = await proxyResponse.json();
-                toast.success('Proxy connection successful! Server is reachable.');
-                console.log('Proxy test result:', data);
+                const proxyData = await proxyResponse.json();
+                toast.success('Proxy connection successful!');
               } else {
                 toast.error(`Proxy test failed with status: ${proxyResponse.status}`);
               }
-            } catch (error) {
-              toast.error(`Proxy test error: ${error.message}`);
+            } catch (proxyError) {
+              toast.error(`Proxy test error: ${proxyError.message}`);
             }
+          } else {
+            toast.error(`Server health check failed with status: ${response.status}`);
           }
+        } catch (error) {
+          toast.error(`Server health check failed: ${error.message}`);
         }
+        
+        // Display detailed connection info
+        toast.info('Reconnecting socket...');
+        socket.disconnect().connect();
+        
+        // Display some debugging info
+        toast.info(`Browser URL: ${window.location.href}`);
+        toast.info(`Using transport: polling (WebSockets disabled)`);
       };
       
       return (

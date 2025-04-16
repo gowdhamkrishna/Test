@@ -318,9 +318,7 @@ const io = new Server(server, {
   // Socket.IO performance optimizations
   pingTimeout: 60000, // Increased to 60 seconds for mobile
   pingInterval: 25000, // Increased to 25 seconds for mobile
-  transports: ['polling', 'websocket'], // Try polling first for better compatibility
-  // Prefer websocket but fall back to polling for mobile
-  upgradeTimeout: 10000, // 10 seconds upgrade timeout for slower mobile connections
+  transports: ['polling'], // Use only polling transport due to Cloud Shell WebSocket issues
   // Memory and CPU optimizations
   maxHttpBufferSize: 5e6, // 5MB for image transfers
   connectTimeout: 45000, // 45 second connection timeout for mobile
@@ -333,9 +331,12 @@ const io = new Server(server, {
   }
 });
 
-// Add a connection established listener with debug info
+// Log all connection attempts
 io.engine.on("connection", (rawSocket) => {
   console.log(`New transport connection established: ${rawSocket.transport.name}`);
+  
+  // Log headers for debugging
+  console.log('Connection headers:', rawSocket.request.headers);
 });
 
 const activeUsers = new Map();
