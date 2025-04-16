@@ -23,8 +23,35 @@ const getServerUrl = () => {
     }
   }
   
-  // Otherwise use the current hostname with port 5000
+  // Get hostname
   const hostname = window.location.hostname;
+  
+  // Check if we're in Cloud Shell by looking at the hostname
+  const isCloudShell = hostname.includes('cloudshell.dev') || 
+                       hostname.includes('cs-');
+  
+  // If in Cloud Shell, construct URL based on hostname pattern
+  if (isCloudShell) {
+    // Get the base part of the hostname (before the .)
+    const baseHostname = hostname.split('.')[0];
+    
+    // Handle different Cloud Shell hostname formats
+    if (baseHostname.startsWith('3001-')) {
+      // Replace port in hostname: 3001-cs-xyz... -> 5001-cs-xyz...
+      const newBase = '5001' + baseHostname.substring(4);
+      return `${protocol}://${newBase}.${hostname.split('.').slice(1).join('.')}`;
+    } else if (baseHostname.includes('-')) {
+      // Handle other cloud shell formats with dash-separated components
+      const parts = baseHostname.split('-');
+      parts[0] = '5001'; // Replace port
+      return `${protocol}://${parts.join('-')}.${hostname.split('.').slice(1).join('.')}`;
+    }
+    
+    // Fallback for other cloud shell formats: just use hostname with port 5001
+    return `${protocol}://${hostname}:5001`;
+  }
+  
+  // Otherwise use the current hostname with port 5000
   return `${protocol}://${hostname}:5000`;
 };
 
