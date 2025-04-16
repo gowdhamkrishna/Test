@@ -98,6 +98,74 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Add a Cloud Shell specific test endpoint
+app.get('/proxy-test', (req, res) => {
+  const info = {
+    success: true,
+    timestamp: new Date().toISOString(),
+    headers: req.headers,
+    protocol: req.protocol,
+    secure: req.secure,
+    method: req.method,
+    url: req.url,
+    originalUrl: req.originalUrl,
+    message: 'Server is working correctly via Cloud Shell proxy',
+  };
+  
+  console.log('Proxy test endpoint called:', info);
+  
+  return res.json(info);
+});
+
+// Add a verbose health check endpoint
+app.get('/health-verbose', (req, res) => {
+  const uptime = process.uptime();
+  const memoryUsage = process.memoryUsage();
+  const clientIP = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  
+  // Get socket.io stats
+  const socketStats = {
+    clientsCount: io ? Object.keys(io.sockets.sockets).length : 0,
+    activeUsersCount: activeUsers ? activeUsers.size : 0,
+    adapters: io && io.adapter ? Object.keys(io.adapter.rooms).length : 0
+  };
+  
+  // Get rich connection details
+  const connectionInfo = {
+    protocol: req.protocol,
+    secure: req.secure,
+    host: req.get('host'),
+    originalUrl: req.originalUrl,
+    path: req.path,
+    ip: clientIP,
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'x-forwarded-host': req.headers['x-forwarded-host'],
+    'x-forwarded-proto': req.headers['x-forwarded-proto'],
+    'user-agent': req.headers['user-agent'],
+    referer: req.headers.referer
+  };
+  
+  return res.json({
+    status: 'ok',
+    uptime: uptime,
+    uptimeFormatted: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`,
+    timestamp: new Date().toISOString(),
+    memory: {
+      rss: `${Math.round(memoryUsage.rss / 1024 / 1024)} MB`,
+      heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)} MB`,
+      heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)} MB`,
+    },
+    sockets: socketStats,
+    connection: connectionInfo,
+    allowedOrigins: [
+      'https://3000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev',
+      'https://5000-cs-90e50494-9265-4a69-8fea-20051c5279ad.cs-asia-southeast1-bool.cloudshell.dev',
+      'http://localhost:3000',
+      'http://localhost:5000'
+    ]
+  });
+});
+
 // Enable CORS for all routes
 app.use((req, res, next) => {
   // Allow the specific Google Cloud Shell domain

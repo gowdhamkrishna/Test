@@ -439,6 +439,17 @@ export default function LoginPage() {
         
         toast.info('Running connection diagnostics...');
         
+        // Get server URL for displaying to user
+        const serverUrl = getServerUrl();
+        toast.info(`Current server URL: ${serverUrl}`);
+        
+        // Check if we're in Cloud Shell proxy
+        const isCloudShellProxy = window.location.pathname.includes('/devshell/proxy');
+        if (isCloudShellProxy) {
+          toast.info('Detected Cloud Shell Proxy environment - using polling transport');
+          setTransportType('polling');
+        }
+        
         // Check server health
         const healthResult = await checkServerHealth();
         if (healthResult.success) {
@@ -452,11 +463,31 @@ export default function LoginPage() {
           
           if (transportResult) {
             toast.info('Transport set to polling. Retrying connection...');
+            
+            // Try a direct health check to the proxy test endpoint
+            try {
+              const proxyTestUrl = `${serverUrl}/proxy-test`;
+              toast.info(`Testing proxy connection to: ${proxyTestUrl}`);
+              
+              const proxyResponse = await fetch(proxyTestUrl, { 
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors',
+                credentials: 'same-origin'
+              });
+              
+              if (proxyResponse.ok) {
+                const data = await proxyResponse.json();
+                toast.success('Proxy connection successful! Server is reachable.');
+                console.log('Proxy test result:', data);
+              } else {
+                toast.error(`Proxy test failed with status: ${proxyResponse.status}`);
+              }
+            } catch (error) {
+              toast.error(`Proxy test error: ${error.message}`);
+            }
           }
         }
-        
-        // Display connection info
-        toast.info(`Connecting to: ${getServerUrl()}`);
       };
       
       return (

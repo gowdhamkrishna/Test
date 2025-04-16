@@ -21,20 +21,33 @@ const getServerUrl = () => {
   }
   
   // Check if we're in Google Cloud Shell environment
-  if (window.location.hostname.includes('cloudshell.dev')) {
-    // Get the exact hostname pattern for Cloud Shell
-    const hostname = window.location.hostname;
-    // Extract the port and project ID parts
-    const parts = hostname.split('-');
-    if (parts.length >= 2) {
-      // Replace port 3000 with 5000 for backend
-      const portNumber = parts[0] === '3000' ? '5000' : parts[0];
-      // Return the full URL structure with the new port
-      return `https://${portNumber}-${parts.slice(1).join('-')}`;
+  if (window.location.hostname.includes('cloudshell.dev') || 
+      window.location.pathname.includes('/devshell/proxy')) {
+    
+    // Get the current URL
+    const currentUrl = window.location.href;
+    console.log('Current URL:', currentUrl);
+    
+    // Special handling for devshell proxy format
+    if (currentUrl.includes('/devshell/proxy')) {
+      // Extract port from the URL or query params
+      const urlParams = new URLSearchParams(window.location.search);
+      const port = urlParams.get('port');
+      const targetPort = port === '3000' ? '5000' : port;
+      
+      // Construct backend URL with the same domain but different port
+      return `${window.location.protocol}//${window.location.host}/devshell/proxy?port=${targetPort}&environment_id=default`;
     }
     
-    // Fallback to simpler replacement if pattern doesn't match
-    return window.location.origin.replace(/^https?:\/\/\d+/, 'https://5000');
+    // Regular Cloud Shell format (hostname with port)
+    const hostname = window.location.hostname;
+    // Try to keep the same hostname but change port from 3000 to 5000
+    if (hostname.startsWith('3000-')) {
+      return `https://${hostname.replace('3000-', '5000-')}`;
+    }
+    
+    // If hostname doesn't follow the expected pattern, fall back to a simple port replacement
+    return window.location.origin.replace(/:\d+/, ':5000').replace(/\/\d+-/, '/5000-');
   }
   
   // Otherwise use the current hostname with port 5000
@@ -90,13 +103,17 @@ const createSocket = () => {
   
   console.log(`Connecting to server at: ${serverUrl}`);
   
+  // Check if we're in Cloud Shell proxy environment
+  const isCloudShellProxy = typeof window !== 'undefined' && 
+                           window.location.pathname.includes('/devshell/proxy');
+  
   const socket = io(serverUrl, {
     reconnection: true,
     reconnectionAttempts: Infinity, // Try to reconnect indefinitely
     reconnectionDelay: 1000,
     reconnectionDelayMax: isMobileDevice() ? 10000 : 5000, // Longer max delay on mobile
     timeout: isMobileDevice() ? 30000 : 20000, // Longer timeout on mobile
-    transports: ['polling', 'websocket'], // Try polling first, then websocket
+    transports: isCloudShellProxy ? ['polling'] : ['polling', 'websocket'], // Force polling in Cloud Shell proxy
     autoConnect: true,
     forceNew: true, // Create a new connection to avoid stale connections
     // Include username in handshake query if available
@@ -105,7 +122,13 @@ const createSocket = () => {
       lastActive: lastActiveTimestamp
     },
     // Enable CORS with credentials
-    withCredentials: true
+    withCredentials: true,
+    // Additional options that might help in Cloud Shell
+    path: isCloudShellProxy ? '/socket.io' : undefined,
+    extraHeaders: isCloudShellProxy ? {
+      'X-Forwarded-Host': window.location.host,
+      'X-Forwarded-Proto': window.location.protocol.replace(':', '')
+    } : {}
   });
   
   // Add additional debugging for connection process
@@ -115,10 +138,8 @@ const createSocket = () => {
   
   socket.io.on("reconnect_attempt", (attempt) => {
     console.log(`Socket reconnect attempt #${attempt}`);
-    // On later reconnect attempts, try different transport options
-    if (attempt > 2) {
-      socket.io.opts.transports = ['polling']; // Force polling on later reconnect attempts
-    }
+    // Always use polling on reconnect attempts
+    socket.io.opts.transports = ['polling'];
   });
   
   return socket;
