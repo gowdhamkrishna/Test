@@ -100,25 +100,9 @@ app.get('/health', (req, res) => {
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
-  const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
-  const origin = req.headers.origin;
-  
-  // Allow cloudshell.dev origins or localhost
-  if (origin && (origin.includes('cloudshell.dev') || allowedOrigins.includes(origin))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else {
-    res.header('Access-Control-Allow-Origin', '*');
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
   next();
 });
 
@@ -224,7 +208,7 @@ app.post('/recreate-user', async (req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: ["*", "http://localhost:3000", "http://localhost:3001", "https://*.cloudshell.dev", "capacitor://localhost", "ionic://localhost", "null"],
+    origin: ["*", "http://localhost:3000", "capacitor://localhost", "ionic://localhost", "null"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]

@@ -27,28 +27,23 @@ const getServerUrl = () => {
   const hostname = window.location.hostname;
   
   // Check if we're in Cloud Shell by looking at the hostname
-  const isCloudShell = hostname.includes('cloudshell.dev') || 
-                       hostname.includes('cs-');
+  const isCloudShell = hostname.includes('cloudshell.dev');
   
-  // If in Cloud Shell, construct URL based on hostname pattern
+  // If in Cloud Shell, use port 5001 (or detect from URL structure)
   if (isCloudShell) {
-    // Get the base part of the hostname (before the .)
+    // Extract the base hostname (before the .)
     const baseHostname = hostname.split('.')[0];
-    
-    // Handle different Cloud Shell hostname formats
-    if (baseHostname.startsWith('3001-')) {
-      // Replace port in hostname: 3001-cs-xyz... -> 5001-cs-xyz...
-      const newBase = '5001' + baseHostname.substring(4);
-      return `${protocol}://${newBase}.${hostname.split('.').slice(1).join('.')}`;
-    } else if (baseHostname.includes('-')) {
-      // Handle other cloud shell formats with dash-separated components
+    // Replace the port number in the hostname
+    // For example: 3000-cs-xyz.cloudshell.dev -> 5001-cs-xyz.cloudshell.dev
+    if (baseHostname.includes('-')) {
       const parts = baseHostname.split('-');
-      parts[0] = '5001'; // Replace port
-      return `${protocol}://${parts.join('-')}.${hostname.split('.').slice(1).join('.')}`;
+      if (parts.length > 1) {
+        parts[0] = '5001'; // Replace the port part
+        const newHostname = parts.join('-') + hostname.substring(hostname.indexOf('.'));
+        return `${protocol}://${newHostname}`;
+      }
     }
-    
-    // Fallback for other cloud shell formats: just use hostname with port 5001
-    return `${protocol}://${hostname}:5001`;
+    return `${protocol}://${hostname.replace(/^\d+/, '5001')}`;
   }
   
   // Otherwise use the current hostname with port 5000
