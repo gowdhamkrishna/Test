@@ -13,7 +13,8 @@
     "proxy": "node cloud-shell-setup.js",
     "cloud": "concurrently \"npm run dev\" \"npm run server\" \"npm run proxy\"",
     "gcloud": "node gcloud-server.js",
-    "cloudshell": "concurrently \"next dev\" \"nodemon server.js\" \"node gcloud-server.js\""
+    "cloudshell": "concurrently \"next dev\" \"nodemon server.js\" \"node gcloud-server.js\"",
+    "cs-env": "concurrently -c \"blue,green,red\" -n \"CLIENT,SERVER,PROXY\" \"PORT=3000 npm run dev\" \"PORT=5000 node server.js\" \"PORT=8080 node gcloud-server.js\""
   },
   "dependencies": {
     "compression": "^1.8.0",

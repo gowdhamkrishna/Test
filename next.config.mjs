@@ -1,5 +1,26 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable custom URL handling
+  experimental: {
+    allowedRevalidateHeaderKeys: ['x-prerender-revalidate'],
+    esmExternals: 'loose'
+  },
+  
+  // Add CORS headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type,Authorization,X-Requested-With' },
+        ],
+      },
+    ];
+  },
+  
+  // Configure rewrites to use appropriate URLs
   async rewrites() {
     return [
       {
